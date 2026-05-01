@@ -124,6 +124,24 @@ async def update_cell(cellId: str = "", content: str = "") -> str:
 
 
 @mcp.tool()
+async def get_cells() -> str:
+    """Read all cells (id, type, source, outputs) from the Colab notebook. Requires an active browser connection via open_colab_browser_connection."""
+    return await _forward_or_stub("get_cells", {})
+
+
+@mcp.tool()
+async def move_cell(cellId: str = "", cellIndex: int = 0) -> str:
+    """Move an existing cell to a new index in the Colab notebook. Requires an active browser connection via open_colab_browser_connection."""
+    return await _forward_or_stub("move_cell", {"cellId": cellId, "cellIndex": cellIndex})
+
+
+@mcp.tool()
+async def delete_cell(cellId: str = "") -> str:
+    """Delete a cell from the Colab notebook. Requires an active browser connection via open_colab_browser_connection."""
+    return await _forward_or_stub("delete_cell", {"cellId": cellId})
+
+
+@mcp.tool()
 async def change_runtime(accelerator: str = "T4") -> str:
     """Change the Colab runtime to use a specific GPU accelerator. Valid values: NONE, T4, L4, A100. Requires OAuth setup (first time opens browser for consent). Configure with --client-oauth-config."""
     if _colab_client is None:
