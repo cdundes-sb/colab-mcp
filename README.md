@@ -32,6 +32,14 @@ The official `googlecolab/colab-mcp` has two well-known limitations:
 
 This fork fixes both, combining the approaches from ZeroPointSix and SebastianGilPinzon.
 
+## Changes on top of the source forks
+
+Beyond merging the two upstreams, this fork adds:
+
+- **Security: notebook URL origin validation** — `get_colab_url()` now only accepts paths or URLs whose origin is `colab.research.google.com` / `colab.google.com`. Anything else logs a warning and falls back to the scratch notebook. Without this, passing `--notebook https://attacker.example/page` would put the proxy auth token in that page's URL fragment, where client-side JS could exfiltrate it and drive the local WebSocket.
+- **Reliability**: dropped three tool stubs (`get_cells`, `delete_cell`, `move_cell`) whose parameter signatures were guessed and never tested against the browser-side tools — they can be reintroduced once verified.
+- **Cleanup**: removed the now-unused `ColabProxyMiddleware` (~70 lines of dead code from the pre-startup-registration design); fixed unassign-failure swallowing in `change_runtime`; tightened `None` checks around startup globals.
+
 ---
 
 ## Available Tools
