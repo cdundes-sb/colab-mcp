@@ -32,6 +32,7 @@ mcp = FastMCP(name="ColabMCP")
 _proxy_client = None
 _session_mcp = None
 _colab_client = None  # For runtime API (assign/unassign GPU)
+_runtime_tool = None  # For executing code on the Colab runtime via Jupyter kernel
 
 
 # Startup tool registration (invisible tools fix), change_runtime, and _forward_or_stub
@@ -207,11 +208,19 @@ def parse_args(v):
         action="store",
         default=None,
     )
+    # --enable-runtime from anthony-maio/colab-mcp — https://github.com/anthony-maio/colab-mcp
+    parser.add_argument(
+        "-r",
+        "--enable-runtime",
+        help="Enable runtime tools (execute_code) for running code on a Colab Jupyter kernel without a browser. Requires --client-oauth-config.",
+        action="store_true",
+        default=False,
+    )
     return parser.parse_args(v)
 
 
 async def main_async():
-    global _proxy_client, _session_mcp, _colab_client
+    global _proxy_client, _session_mcp, _colab_client, _runtime_tool
     args = parse_args(sys.argv[1:])
     init_logger(args.log)
 
@@ -242,12 +251,36 @@ async def main_async():
         except Exception as e:
             logging.warning(f"Failed to initialize Colab API client: {e}")
 
+    if args.enable_runtime:
+        # execute_code tool: run code on a Colab Jupyter kernel without a browser.
+        # Ported from anthony-maio/colab-mcp — https://github.com/anthony-maio/colab-mcp
+        if not args.client_oauth_config:
+            logging.warning(
+                "--enable-runtime requires --client-oauth-config; runtime tools disabled."
+            )
+        else:
+            try:
+                from colab_mcp.auth import get_credentials
+                from colab_mcp import runtime as colab_runtime
+                # Pre-fetch credentials so we fail fast if OAuth isn't set up.
+                get_credentials(args.client_oauth_config)
+                _runtime_tool = colab_runtime.ColabRuntimeTool()
+                mcp.mount(_runtime_tool.mcp, prefix="runtime")
+                logging.info("enabling runtime tools (runtime_execute_code)")
+            except Exception as e:
+                logging.warning(f"Failed to initialize runtime tools: {e}")
+
     try:
         await mcp.run_async()
 
     finally:
         if args.enable_proxy and _session_mcp:
             await _session_mcp.cleanup()
+        if _runtime_tool is not None:
+            try:
+                _runtime_tool.stop()
+            except Exception as e:
+                logging.warning(f"runtime cleanup failed: {e}")
 
 
 def main() -> None:

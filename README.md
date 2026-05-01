@@ -18,6 +18,7 @@ This fork would not exist without the work of:
 | **Google Colab team** | [googlecolab/colab-mcp](https://github.com/googlecolab/colab-mcp) | Original project, core WebSocket/proxy architecture, Apache 2.0 license |
 | **guanshangshui** | [ZeroPointSix/colab-mcp](https://github.com/ZeroPointSix/colab-mcp) | CLI args (`-n/-H/-P/--no-browser`), `get_colab_url()`, SSH tunnel / remote connection support, stdout→stderr fix |
 | **Sebastian Gil Pinzon** | [SebastianGilPinzon/colab-mcp](https://github.com/SebastianGilPinzon/colab-mcp) | Invisible tools fix (startup registration), `change_runtime` tool, OAuth token caching (`auth.py`), Colab API client (`client.py`), `await_tools_ready()`, Windows port fix |
+| **Anthony Maio** | [anthony-maio/colab-mcp](https://github.com/anthony-maio/colab-mcp) | `execute_code` tool / `runtime.py` (run Python on a Colab Jupyter kernel without a browser), `--enable-runtime` flag, test suite (`auth_test.py`, `client_test.py`, `runtime_test.py`) |
 | **Claude Code** | [Anthropic](https://claude.ai/code) | Assembled and merged this fork |
 
 ---
@@ -39,6 +40,7 @@ Beyond merging the two upstreams, this fork adds:
 - **Security: notebook URL origin validation** — `get_colab_url()` now only accepts paths or URLs whose origin is `colab.research.google.com` / `colab.google.com`. Anything else logs a warning and falls back to the scratch notebook. Without this, passing `--notebook https://attacker.example/page` would put the proxy auth token in that page's URL fragment, where client-side JS could exfiltrate it and drive the local WebSocket.
 - **Reliability**: dropped three tool stubs (`get_cells`, `delete_cell`, `move_cell`) whose parameter signatures were guessed and never tested against the browser-side tools — they can be reintroduced once verified.
 - **Cleanup**: removed the now-unused `ColabProxyMiddleware` (~70 lines of dead code from the pre-startup-registration design); fixed unassign-failure swallowing in `change_runtime`; tightened `None` checks around startup globals.
+- **Architecture note**: anthony-maio's `runtime.py` / `execute_code` is gated behind `--enable-runtime` (rather than auto-enabled with OAuth) so the user can opt out of mounting the Jupyter kernel client even when `change_runtime` is configured.
 
 ---
 
@@ -52,6 +54,7 @@ Beyond merging the two upstreams, this fork adds:
 | `execute_cell` | Yes | — | Run a cell by ID or index |
 | `update_cell` | Yes | — | Edit an existing cell's contents |
 | `change_runtime` | — | Yes | Assign GPU: `T4`, `L4`, `A100`, or `NONE` |
+| `runtime_execute_code` | — | Yes (and `--enable-runtime`) | Run Python on the Colab Jupyter kernel directly — no browser required |
 
 All tools are registered at startup and visible immediately to any MCP client.
 
@@ -126,6 +129,9 @@ Options:
                               opening a browser (useful for SSH/remote)
   --client-oauth-config PATH  Path to OAuth client secrets JSON
                               (enables change_runtime tool)
+  -r, --enable-runtime        Mount runtime tools (runtime_execute_code) for
+                              running code on a Colab Jupyter kernel directly,
+                              without a browser. Requires --client-oauth-config.
 ```
 
 ### Remote / SSH usage
