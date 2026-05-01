@@ -52,14 +52,25 @@ async def _forward_or_stub(tool_name: str, arguments: dict) -> str:
 
 
 @mcp.tool()
-async def open_colab_browser_connection() -> str:
-    """Opens a connection to a Google Colab browser session and unlocks notebook editing tools. Returns whether the connection attempt succeeded."""
+async def open_colab_browser_connection(notebook_url: str = "") -> str:
+    """Opens a connection to a Google Colab browser session and unlocks notebook editing tools.
+
+    Args:
+        notebook_url: Optional Colab notebook URL to open for this connection. Must be on
+            colab.research.google.com (or the alt domain) — non-Colab origins are ignored
+            and fall back to the server-launch default. If empty, uses the URL configured
+            via the ``-n/--notebook`` server flag (or a scratch notebook).
+
+    Returns whether the connection attempt succeeded.
+    """
     if _proxy_client is not None and _proxy_client.is_connected():
         return "Already connected to Colab."
 
     if _proxy_client is None:
         return "Server not initialized. Please wait and try again."
 
+    if notebook_url:
+        _proxy_client.wss.notebook_url = notebook_url
     colab_url = _proxy_client.wss.get_colab_url()
 
     # Remote connection CLI args (-n/-H/-P/--no-browser) from ZeroPointSix/colab-mcp
