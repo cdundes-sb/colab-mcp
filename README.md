@@ -43,9 +43,6 @@ This fork fixes both, combining the approaches from ZeroPointSix and SebastianGi
 | `add_text_cell` | Yes | — | Add a markdown/text cell |
 | `execute_cell` | Yes | — | Run a cell by ID or index |
 | `update_cell` | Yes | — | Edit an existing cell's contents |
-| `get_cells` | Yes | — | List all cells in the notebook |
-| `delete_cell` | Yes | — | Delete a cell |
-| `move_cell` | Yes | — | Move a cell to a new position |
 | `change_runtime` | — | Yes | Assign GPU: `T4`, `L4`, `A100`, or `NONE` |
 
 All tools are registered at startup and visible immediately to any MCP client.

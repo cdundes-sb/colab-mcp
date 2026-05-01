@@ -64,15 +64,32 @@ class ColabWebSocketServer:
         self.token = secrets.token_urlsafe(16)
 
     def get_colab_url(self) -> str:
-        """Construct the Colab URL to open, including MCP proxy connection parameters."""
+        """Construct the Colab URL to open, including MCP proxy connection parameters.
+
+        Only Colab-hosted URLs and absolute paths are accepted for ``notebook_url``;
+        anything else falls back to the scratch notebook to prevent the proxy auth
+        token (placed in the URL fragment) from leaking to a non-Colab origin.
+        """
+        from urllib.parse import urlparse
+
+        base_url = f"{COLAB}{SCRATCH_PATH}"
         if self.notebook_url:
-            base_url = self.notebook_url
-            if "#" in base_url:
-                base_url = base_url.split("#")[0]
-            if base_url.startswith("/"):
-                base_url = f"{COLAB}{base_url}"
-        else:
-            base_url = f"{COLAB}{SCRATCH_PATH}"
+            candidate = self.notebook_url.split("#", 1)[0]
+            if candidate.startswith("/"):
+                base_url = f"{COLAB}{candidate}"
+            else:
+                parsed = urlparse(candidate)
+                origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme else ""
+                if origin in (COLAB, COLAB_ALT_DOMAIN):
+                    base_url = candidate
+                else:
+                    logging.warning(
+                        "Ignoring notebook_url %r: origin must be %s or %s. "
+                        "Falling back to scratch notebook.",
+                        self.notebook_url,
+                        COLAB,
+                        COLAB_ALT_DOMAIN,
+                    )
 
         return f"{base_url}#mcpProxyToken={self.token}&mcpProxyPort={self.port}"
 

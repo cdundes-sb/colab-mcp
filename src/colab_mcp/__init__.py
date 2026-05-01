@@ -63,7 +63,7 @@ async def open_colab_browser_connection() -> str:
 
     # Remote connection CLI args (-n/-H/-P/--no-browser) from ZeroPointSix/colab-mcp
     # https://github.com/ZeroPointSix/colab-mcp
-    if _session_mcp.no_browser:
+    if _session_mcp is not None and _session_mcp.no_browser:
         print(
             f"\nOpen this URL in your browser to connect to Colab:\n  {colab_url}\n",
             file=sys.stderr,
@@ -112,24 +112,6 @@ async def update_cell(cellId: str = "", content: str = "") -> str:
 
 
 @mcp.tool()
-async def get_cells() -> str:
-    """Get all cells in the Colab notebook. Requires an active browser connection via open_colab_browser_connection."""
-    return await _forward_or_stub("get_cells", {})
-
-
-@mcp.tool()
-async def delete_cell(cellId: str = "") -> str:
-    """Delete a cell from the Colab notebook. Requires an active browser connection via open_colab_browser_connection."""
-    return await _forward_or_stub("delete_cell", {"cellId": cellId})
-
-
-@mcp.tool()
-async def move_cell(cellId: str = "", newIndex: int = 0) -> str:
-    """Move a cell to a new position in the Colab notebook. Requires an active browser connection via open_colab_browser_connection."""
-    return await _forward_or_stub("move_cell", {"cellId": cellId, "newIndex": newIndex})
-
-
-@mcp.tool()
 async def change_runtime(accelerator: str = "T4") -> str:
     """Change the Colab runtime to use a specific GPU accelerator. Valid values: NONE, T4, L4, A100. Requires OAuth setup (first time opens browser for consent). Configure with --client-oauth-config."""
     if _colab_client is None:
@@ -147,8 +129,8 @@ async def change_runtime(accelerator: str = "T4") -> str:
             assignments = _colab_client.list_assignments()
             for a in assignments:
                 _colab_client.unassign(a.endpoint)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("Failed to unassign existing runtime(s): %s", e)
 
         # Assign new VM
         result = _colab_client.assign(notebook_hash, variant, acc)
